@@ -2,9 +2,32 @@
 #include <string>
 #include <../random>
 #include <../algorithm>
-#include <../climits>
+#include <../cctype>
+#include <../ctime>
 #include <../iomanip>
 #include <../fstream>
+
+// Check if password contains at least one char from each selected set
+bool is_valid_password(const std::string& password, bool use_upper, bool use_digits, bool use_special) {
+    bool has_lower = false;
+    bool has_upper = false;
+    bool has_digits = false;
+    bool has_special = false;
+
+    for (char c : password) {
+        if (islower(c)) has_lower = true;
+        else if (isupper(c)) has_upper = true;
+        else if (isdigit(c)) has_digits = true;
+        else has_special = true;
+    }
+
+    // Enforce rules for enabled charset
+    if (use_upper && !has_upper) return false;
+    if (use_digits && !has_digits) return false;
+    if (use_special && !has_special) return false;
+
+    return true;
+}
 
 
 std::string generate_password(int length, bool use_upper, bool use_digits, bool use_special) {
@@ -28,11 +51,21 @@ std::string generate_password(int length, bool use_upper, bool use_digits, bool 
     std::uniform_int_distribution<int> distribution(0, charset.size() - 1);
 
     std::string password;
-    for (int i = 0; i < length; ++i) {
-        password += charset[distribution(generator)];
+    int max_attempts = 10; // Prevent loops
+    for (int attempt = 0; attempt < max_attempts; ++attempt) {
+        for (int i = 0; i < length; ++i) {
+            password += charset[distribution(generator)];
+        }
+
+    if (is_valid_password(password, use_upper, use_digits, use_special)) {
+        return password; // Valid password
     }
 
-    return password;
+    }
+
+    std::cerr << "Failed to generate a valid password after " << max_attempts << "attempts.\n";
+    return "";
+
 }
 
 void save_to_file(const std::string& category, const std::string& login, const std::string& password) {
@@ -61,14 +94,15 @@ void save_to_file(const std::string& category, const std::string& login, const s
 int main () {
     std::string category, login;
     int length = 12;
+    bool use_upper = true, use_digits = true, use_special = true;
 
-    std::cout << "Enter category (e.g., 'Google', 'Steam'): ";
+    std::cout << "Enter category (e.g., 'Discord', 'Steam'): ";
     std::getline(std::cin, category);
 
     std::cout << "Enter login/username: ";
     std::getline(std::cin, login);
 
-    std::string password = generate_password(length, true, true, true);
+    std::string password = generate_password(length, use_upper, use_digits, use_special);
     std::cout << "Generated Password: " << password << "\n";
 
     save_to_file(category, login, password);
